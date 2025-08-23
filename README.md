@@ -1,5 +1,5 @@
 # binary-drought-event-classifier
-# Australian Drought-Event Classifier (R → Python)
+# Drought-Event Classifier (R → Python)
 
 This repo contains a time-aware **binary drought-event classifier** using monthly climate, vegetation, and hydrologic features from Australian stations (1994–2024).
 
