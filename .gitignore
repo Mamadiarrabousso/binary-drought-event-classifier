@@ -1,0 +1,9 @@
+data/raw/*
+data/processed/*.csv
+models/*.pkl
+models/*.h5
+results/*.csv
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store
+.Rproj.user/
