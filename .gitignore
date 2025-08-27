@@ -1,9 +1,6 @@
 data/raw/*
-data/processed/*.csv
-models/*.pkl
-models/*.h5
-results/*.csv
+models/*
 __pycache__/
 .ipynb_checkpoints/
 .DS_Store
-.Rproj.user/
+
