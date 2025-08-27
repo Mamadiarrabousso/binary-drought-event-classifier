@@ -1,36 +1,68 @@
-# binary-drought-event-classifier
-# Drought-Event Classifier (R → Python)
 
-This repo contains a time-aware **binary drought-event classifier** using monthly climate, vegetation, and hydrologic features from Australian stations (1994–2024).
 
-## Summary
-- **Model:** class-weighted Random Forest (primary), with NN/ensembles tested.
-- **Label:** drought = 1 if root-zone soil moisture < expanding 20th percentile (**past-only**, lagged threshold).
-- **Key features:** mean_Temp, NDVI, SPI_3, Rain, Runoff (SPI_12 smaller).
-- **Held-out performance:** ROC-AUC ≈ **0.90** (chronological test).  
-  With a recall-oriented threshold, F1 ≈ **0.63** (high recall).
-- **Transfer:** On an unseen station, ranking skill ≈ **0.82** ROC-AUC; station-specific thresholds/calibration improve recall.
+Introduction
 
-> Note: in this version, some thresholds were chosen post-hoc on test; AUC is unaffected, but F1/precision/recall may be slightly optimistic. Future work: choose thresholds on a validation tail.
+Droughts can disrupt ecosystems, agriculture, and our water sources, sometimes in unexpected ways. For this project, we attempted to address the problem by developing a simple binary or a yes-or-no classifier to identify droughts monthly at specific stations, utilizing both climate and vegetation data. The EDA was executed entirely in R, while the model was trained and tested in Python.
 
-## Repo structure
-- `R/phase1_drought_prep.R` — data prep, SPI, label creation (past-only), writes CSVs + `feature_names.txt`.
-- `notebooks/phase2_drought_modeling.ipynb` — (optional) your Colab/Notebook.
-- `src/train_rf.py` — script to train RF, select threshold, save artifacts.
-- `src/predict.py` — load model + scaler and score a CSV.
-- `data/` — no raw data committed; see `data/README.md`.
-- `results/` — figures/metrics.
+Project Overview
 
-## How to run
-```bash
-python -m venv .venv
-# Windows: .venv\Scripts\activate
-# macOS/Linux:
-source .venv/bin/activate
-pip install -r requirements.txt
+This work builds a machine learning framework for predicting drought conditions across nine weather stations in Southeastern Australia, using climate and environmental data from 1994 to 2024. The work progressed through three main phases: data preparation in R, model development in Python/Colab, and evaluation of transfer learning.
 
-# (1) Prepare data in R (writes to data/processed/)
-Rscript R/phase1_drought_prep.R
+Methodology
 
-# (2) Train and evaluate
-python src/train_rf.py --processed_dir data/processed --out_dir . --stations BAIRNSDALE_AIRPORT_Combined MORWELL_LATROBE_VALLEY
+We follow a two-phase workflow:
+
+1. Phase 1 (R): Data cleaning, SPI , and past-only drought labels.
+2. Phase 2 (Python): chronological train/test split, class-weighted Random Forest (baseline), threshold calibration on a validation tail (from the training period), comparison to a small NN/ensembles, and transfer to a new station.
+
+ 
+
+Methods and Results
+
+This study builds a monthly, station-level drought event classifier for 9 chosen stations in Southeastern Australia for (1994–2024). Features are engineered in R, and models are trained in Python on a chronological split of 80% for training and 20% for testing. A month is labeled as a drought (1) when root-zone soil moisture drops below the expanding 20th percentile computed from past months only (the threshold is lagged one step, so the current month never “sees” itself).
+
+Phase 1 — R data preparation and exploratory analysis
+
+I ingested nine stations, forward-filled EVI/NDVI from the past only, and computed SPI-3 and SPI-12 with SPEI::spi() per station. After sorting by date, I created the drought label using an expanding quantile.
+
+image.png
+
+The correlation structure is consistent with hydrological intuition: SPI-3 and soil moisture are positively related, temperature opposes moisture, and vegetation greenness (NDVI) covaries with wetter conditions.
+
+image.png
+
+A  cross-correlation between SPI-3 and soil moisture peaks at a positive lag of about one to two months, suggesting short-term precipitation anomalies tend to lead root-zone response on that timescale.
+
+image.png
+
+Phase 2 — Model development on the source domain
+
+I combined BAIRNSDALE_AIRPORT_Combined and MORWELL_LATROBE_VALLEY as source data, removed any rows with missing values in the six modeling features (SPI_3, SPI_12, mean_Temp, Rain, Runoff, NDVI) or the target, and obtained 722 complete station-months. The first 80% of the record trained the models; the last 20% (145 months) formed a strictly held-out test tail. Features were standardized using parameters fit only on the training split.
+
+Two model families were trained: a class-weighted Random Forest and a compact neural network (dense layers with dropout). Because drought months are rare (~17% in the test tail), I calibrated the operating point with the precision–recall curve rather than default 0.5.
+
+image.png
+
+The Random Forest delivers strong ranking skill (ROC–AUC ≈ 0.90 on the test tail). With a recall-oriented threshold of about 0.30, it achieves F1 ≈ 0.615, accuracy ≈ 0.828, and recall ≈ 0.83 for drought months (precision ≈ 0.49). A small neural network, after class weighting and threshold tuning (~0.55), reaches ROC–AUC ≈ 0.865 and F1 ≈ 0.588. Time-series cross-validation inside the training period yields a mean F1 of ≈ 0.588, close to the held-out estimate.
+
+Feature attribution aligns with domain knowledge. Temperature dominates, vegetation state and short-term wetness follow, while long-term SPI-12 adds comparatively little.
+
+image.png
+
+I also compared tuned ensembles and the optimized Random Forest remained the best overall, with ROC–AUC ≈ 0.901 and F1 ≈ 0.638 at its own PR-curve threshold (~0.43), narrowly outperforming both ensembles.
+
+image.png
+
+Transparency note. Some operating thresholds were explored on the test tail to study recall/precision trade-offs. This does not affect AUC, but F1/precision/recall may be slightly optimistic. In production, pick thresholds on a validation tail and report final metrics on the last, unseen period.
+
+image.png
+
+Phase 3 — Transfer to an unseen station and light fine-tuning
+
+To assess spatial generalization, I applied the source-trained pipeline to GELANTIPY without retraining. With the source threshold, the model kept good ranking (ROC–AUC ≈ 0.822) but under-recalled drought months (F1 ≈ 0.448), a typical signature of domain shift. I then fine-tuned a Random Forest by augmenting the source training set with the first 30% of GELANTIPY’s history and retraining with the same architecture. This improvement in performance on GELANTIPY resulted in an accuracy of 0.856 and F1 ≈ of 0.662 at the same operating point, while recovering recall while preserving ranking skill.
+
+image.png
+
+Summary. Across two source stations, a tuned, class-weighted Random Forest provides reliable probability ranking (AUC ~0.90) and high-recall event detection once the threshold is calibrated. On a new station, simple recalibration—and, where available, a brief fine-tuning with early local data—substantially improves detection while maintaining strong discrimination.
+
+ 
