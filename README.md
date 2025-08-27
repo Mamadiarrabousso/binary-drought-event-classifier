@@ -25,15 +25,15 @@ Phase 1 — R data preparation and exploratory analysis
 
 I ingested nine stations, forward-filled EVI/NDVI from the past only, and computed SPI-3 and SPI-12 with SPEI::spi() per station. After sorting by date, I created the drought label using an expanding quantile.
 
-image.png
+![figure_01.jpeg](results/figures/figure_01.jpeg)
 
 The correlation structure is consistent with hydrological intuition: SPI-3 and soil moisture are positively related, temperature opposes moisture, and vegetation greenness (NDVI) covaries with wetter conditions.
 
-image.png
+![figure_02.png](results/figures/figure_02.png)
 
 A  cross-correlation between SPI-3 and soil moisture peaks at a positive lag of about one to two months, suggesting short-term precipitation anomalies tend to lead root-zone response on that timescale.
 
-image.png
+![figure_03.jpeg](results/figures/figure_03.jpeg)
 
 Phase 2 — Model development on the source domain
 
@@ -41,28 +41,45 @@ I combined BAIRNSDALE_AIRPORT_Combined and MORWELL_LATROBE_VALLEY as source data
 
 Two model families were trained: a class-weighted Random Forest and a compact neural network (dense layers with dropout). Because drought months are rare (~17% in the test tail), I calibrated the operating point with the precision–recall curve rather than default 0.5.
 
-image.png
+![figure_04.png](results/figures/figure_04.png)
+
 
 The Random Forest delivers strong ranking skill (ROC–AUC ≈ 0.90 on the test tail). With a recall-oriented threshold of about 0.30, it achieves F1 ≈ 0.615, accuracy ≈ 0.828, and recall ≈ 0.83 for drought months (precision ≈ 0.49). A small neural network, after class weighting and threshold tuning (~0.55), reaches ROC–AUC ≈ 0.865 and F1 ≈ 0.588. Time-series cross-validation inside the training period yields a mean F1 of ≈ 0.588, close to the held-out estimate.
 
 Feature attribution aligns with domain knowledge. Temperature dominates, vegetation state and short-term wetness follow, while long-term SPI-12 adds comparatively little.
 
-image.png
+![figure_05.png](results/figures/figure_05.png)
 
 I also compared tuned ensembles and the optimized Random Forest remained the best overall, with ROC–AUC ≈ 0.901 and F1 ≈ 0.638 at its own PR-curve threshold (~0.43), narrowly outperforming both ensembles.
 
-image.png
+![figure_06.png](results/figures/figure_06.png)
 
 Transparency note. Some operating thresholds were explored on the test tail to study recall/precision trade-offs. This does not affect AUC, but F1/precision/recall may be slightly optimistic. In production, pick thresholds on a validation tail and report final metrics on the last, unseen period.
 
-image.png
+![figure_07.png](results/figures/figure_07.png)
 
 Phase 3 — Transfer to an unseen station and light fine-tuning
 
 To assess spatial generalization, I applied the source-trained pipeline to GELANTIPY without retraining. With the source threshold, the model kept good ranking (ROC–AUC ≈ 0.822) but under-recalled drought months (F1 ≈ 0.448), a typical signature of domain shift. I then fine-tuned a Random Forest by augmenting the source training set with the first 30% of GELANTIPY’s history and retraining with the same architecture. This improvement in performance on GELANTIPY resulted in an accuracy of 0.856 and F1 ≈ of 0.662 at the same operating point, while recovering recall while preserving ranking skill.
 
-image.png
+![figure_08.png](results/figures/figure_08.png)
 
 Summary. Across two source stations, a tuned, class-weighted Random Forest provides reliable probability ranking (AUC ~0.90) and high-recall event detection once the threshold is calibrated. On a new station, simple recalibration—and, where available, a brief fine-tuning with early local data—substantially improves detection while maintaining strong discrimination.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
  
