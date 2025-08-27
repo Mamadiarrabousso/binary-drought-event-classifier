@@ -84,7 +84,7 @@ To assess spatial generalization, I applied the source-trained pipeline to GELAN
 ![Figure 8](figure_08.png)
 
 
-Summary. Across two source stations, a tuned, class-weighted Random Forest provides reliable probability ranking (AUC ~0.90) and high-recall event detection once the threshold is calibrated. On a new station, simple recalibration—and, where available, a brief fine-tuning with early local data—substantially improves detection while maintaining strong discrimination.
+Summary. Across two source stations, a tuned, class-weighted Random Forest provides reliable probability ranking (AUC ~0.90) and high-recall event detection once the threshold is calibrated. On a new station, simple recalibration and, where available, a brief fine-tuning with early local data substantially improves detection while maintaining strong discrimination.
 
 
 
